@@ -1,16 +1,28 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:tourist_guide/controller/bindings/home_binding.dart';
 import 'package:tourist_guide/data/shared_preference.dart';
 import 'package:tourist_guide/ui/pages/dashboard_page.dart';
 import 'package:tourist_guide/ui/pages/guide_home.dart';
 import 'package:tourist_guide/ui/pages/login.dart';
+import 'package:tourist_guide/ui/pages/new_dash_board.dart';
+import 'package:tourist_guide/utils/beta.dart';
+
+import 'controller/bindings/auth_binding.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Set portrait orientation
+ /* SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.portraitUp,
+  ]);*/
   await Firebase.initializeApp();
-  //SharedPreferenceUtil.changeUserSessionStatus("");
+  //SharedPreferenceUtil.saveUserId("338a698b-82a1-4836-8e1f-c89b93504c72");
+  //SharedPreferenceUtil.changeUserType("");
+  //SharedPreferenceUtil.changeUserSessionStatus(SharedPreferenceUtil.initial);
   runApp(
     MyApp(),
   );
@@ -22,7 +34,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-        initialBinding: HomePageBinding(),
+        initialBinding: AuthBinding(),
         title: 'Flutter Demo',
         theme: ThemeData(
           primarySwatch: Colors.blue,
@@ -46,10 +58,7 @@ class MyHomePage extends StatelessWidget {
           switch (snapshot.connectionState) {
             case ConnectionState.active:
             case ConnectionState.waiting:
-              return Scaffold(
-                  body: Center(
-                child: CircularProgressIndicator(),
-              ));
+              return SplashScreen(false);
             case ConnectionState.done:
               return decidePageBasedOnUserStatus(snapshot);
             default:
@@ -66,6 +75,7 @@ Widget decidePageBasedOnUserStatus(AsyncSnapshot<String> snapshot) {
   /*Possible user statuses : initial - for the first time
         logged_in and logged_out
   * */
+  print("decidePageBasedOnUserStatus");
   if (snapshot.hasData) {
     String currentStatus = snapshot.data!;
     print("Current user status : $currentStatus}");
@@ -76,9 +86,7 @@ Widget decidePageBasedOnUserStatus(AsyncSnapshot<String> snapshot) {
             switch (snapshot.connectionState) {
               case ConnectionState.active:
               case ConnectionState.waiting:
-                return Center(
-                  child: CircularProgressIndicator(),
-                );
+                return SplashScreen(false);
               case ConnectionState.done:
                 print("user type ");
                 return decidePageBasedOnUserType(snapshot);
@@ -90,7 +98,7 @@ Widget decidePageBasedOnUserStatus(AsyncSnapshot<String> snapshot) {
             }
           });
     } else if(currentStatus == SharedPreferenceUtil.initial){
-      return LoginPage(); // beta's code here
+      return SplashScreen(true); // beta's code here
     }
     else{
       // for logged_out case
@@ -104,16 +112,37 @@ Widget decidePageBasedOnUserStatus(AsyncSnapshot<String> snapshot) {
   }
 }
 
+Future<String> getUserId() async {
+  return await SharedPreferenceUtil.getUserId();
+}
+
 Widget decidePageBasedOnUserType(AsyncSnapshot<String> snapshot) {
   if (snapshot.hasData) {
     /*Possible user status : tourist and guide */
     String userType = snapshot.data!;
     print("userType : $userType");
+
     if (userType == SharedPreferenceUtil.guideType){
-      return GuideHome();
+      return FutureBuilder<String>(
+            future: SharedPreferenceUtil.getUserId(),
+            builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+              switch (snapshot.connectionState) {
+                case ConnectionState.active:
+                case ConnectionState.waiting:
+                  return SplashScreen(false);
+                case ConnectionState.done:
+                  print("userid : ");
+                  return GuideHome(tourGuideId: snapshot.data ?? "",);
+                default:
+                  return Scaffold(
+                      body: Center(
+                        child: CircularProgressIndicator(),
+                      ));
+              }
+            });
     }
     else if (userType == SharedPreferenceUtil.touristType){
-      return DashboardPage();
+      return NewDashboardPage();//DashboardPage();
     }else{
       return LoginPage();
     }
@@ -126,3 +155,4 @@ Widget decidePageBasedOnUserType(AsyncSnapshot<String> snapshot) {
   }
 
 }
+/*todo */
